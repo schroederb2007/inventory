@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quarterly Tech Inventory</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+
+        h1 { margin-bottom: 5px; }
+
+        input, select {
+            padding: 6px;
+            width: 180px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            vertical-align: middle;
+        }
+
+        th { background: #eee; }
+
+        button {
+            padding: 6px 10px;
+            margin: 2px;
+        }
+
+        img {
+            display: block;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>Quarterly Tech Inventory</h1>
+
+<p><strong>Instructions:</strong> Enter your name, confirm the quarter, update quantities, export, then upload to SharePoint.</p>
+
+<div style="display: flex; gap: 20px; align-items: center; margin-bottom: 15px;">
+
+    <div>
+        <label><strong>Tech Name:</strong></label><br>
+        <input id="techName" placeholder="Enter your name">
+    </div>
+
+    <div>
+        <label><strong>Quarter:</strong></label><br>
+        <select id="quarter">
+            <option>Q1</option>
+            <option>Q2</option>
+            <option>Q3</option>
+            <option>Q4</option>
+        </select>
+    </div>
+
+</div>
+
+<button onclick="exportToCSV()">Export Inventory</button>
+
+<table>
+    <thead>
+        <tr>
+            <th>Part #</th>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>+ / -</th>
+            <th>Set</th>
+        </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+</table>
+
+<script>
+
+// ===== PART LIST =====
+const parts = [
+["MPX-RMT-BDRJ45","MPX8 Board"],
+["XFM-R-MPX","VAVC Transformer"],
+["TPT2","TPT2"],
+["TPT3","TPT3"],
+["TPT4","TPT4"],
+["CRYO-6","Cryo 6"],
+["RTD-50+50","RTD -50/+50C"],
+["RTD-100+50C","RTD -100/+50C"],
+["RTD-200+60C","RTD -200/+60C"],
+["RTD-0+100C","RTD 0/+100C"],
+["SENS-MOD-TH","SensMod2"],
+["CONN1312","Molex Connector - 4 Pin"],
+["CONN1313","Molex Terminals"],
+["CONN1504","RJ45 Connectors"],
+["RES100","Resistor 100KΩ"],
+["RES108","Resistor 240KΩ"],
+["RES15K","25K ohm Resistor"],
+["RES18K","6.8K ohm Resistor"],
+["INST110","Mount Pads"],
+["INST399","Wire Ties 4\""],
+["INST401","Wire Ties 11\""],
+["SHIP1100","RA Tags"],
+["Z3-NET","Z3 Net"],
+["Z3-THX-SST-U","Z3 T/H"],
+["Z3-U2-00-ST-U","Z3 Module"],
+["Z5-U2-00-ST-U","Z5 WIFI Module"],
+["Z3-BATT","Z3 Battery AAA"],
+["Z3-BATT-WIFI","Z3 Battery WIFI"],
+["Z3-TRANS","Z3 Trans 6V"],
+["XFM-R-MOD102","Z3 Trans 4-20"],
+["MODU1237","S2C Radio"],
+["LABEL902","Warning Labels"],
+["LABEL1904","Validation Labels"],
+["LABEL1214A","Label for Z3 Net"],
+["INST220","Terminal Block"],
+["CONN2011","RJ45-MPX3 Connector"],
+["ADHS1592","Velcro Pads"],
+["WIRE507","Cat 5e 7'"],
+["WIRE2000","15' Ext Cable"],
+["SUB-NET-BRD-RDO","Z3 Net Board"],
+["Z3-NET-POE","Z3 POE"],
+["HDWR1310","Net Heatsink"],
+["ADHS1593","Velcro Pads Small"],
+["Z3-MPX-NET","Z3-MPX-Net"],
+["Z3-MPX-BOARD","Z3 MPX Board"],
+["SUB-Z3-MPXOUT26","Z3 MPX Wire"],
+["XFM-45-CORD","Mod 45"],
+["XFM-24V","24V Power Adapter"]
+];
+
+// ===== LOAD INVENTORY =====
+let inventory = JSON.parse(localStorage.getItem("inventory")) || {};
+
+// ===== RENDER =====
+function render() {
+    const body = document.getElementById("tableBody");
+    body.innerHTML = "";
+
+    parts.forEach(([partNum, desc]) => {
+
+        if (inventory[partNum] == null) inventory[partNum] = 0;
+
+        const imgSrc = `images/${partNum}.jpg`;
+
+        body.innerHTML += `
+        <tr>
+            <td>${partNum}</td>
+            <td>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <img src="${imgSrc}" 
+     style="width:80px;height:80px;object-fit:contain;
+            background:#f5f5f5;
+            border:1px solid #ddd;
+            border-radius:6px;
+            padding:4px;
+            box-shadow:0 1px 3px rgba(0,0,0,0.2);"
+     onerror="this.onerror=null;this.src='images/part.jpg';">
+        <div>${desc}</div>
+    </div>
+</td>
+
+            <td>${inventory[partNum]}</td>
+            <td>
+                <button onclick="changeQty('${partNum}', 1)">+</button>
+                <button onclick="changeQty('${partNum}', -1)">-</button>
+            </td>
+            <td>
+                <input id="input-${partNum}" type="number">
+                <button onclick="setQty('${partNum}')">Set</button>
+            </td>
+        </tr>
+        `;
+    });
+
+    save();
+}
+
+// ===== CHANGE =====
+function changeQty(part, amount) {
+    inventory[part] += amount;
+    render();
+}
+
+// ===== SET =====
+function setQty(part) {
+    const val = document.getElementById(`input-${part}`).value;
+    inventory[part] = Number(val) || 0;
+    render();
+}
+
+// ===== SAVE =====
+function save() {
+    localStorage.setItem("inventory", JSON.stringify(inventory));
+}
+
+// ===== AUTO QUARTER =====
+function setCurrentQuarter() {
+    const month = new Date().getMonth();
+
+    let quarter = "Q1";
+    if (month <= 2) quarter = "Q1";
+    else if (month <= 5) quarter = "Q2";
+    else if (month <= 8) quarter = "Q3";
+    else quarter = "Q4";
+
+    document.getElementById("quarter").value = quarter;
+}
+
+// ===== EXPORT =====
+function exportToCSV() {
+    const techRaw = document.getElementById("techName").value || "Unknown";
+    const tech = techRaw.replace(/\s+/g, "-");
+
+    const quarter = document.getElementById("quarter").value;
+    const year = new Date().getFullYear();
+    const date = new Date().toLocaleDateString();
+
+    let csv = "Tech,Quarter,Year,Date,Part Number,Description,Quantity\n";
+
+    parts.forEach(([partNum, desc]) => {
+        const qty = inventory[partNum] || 0;
+
+        if (qty > 0) {
+            csv += `"${techRaw}","${quarter}","${year}","${date}","${partNum}","${desc}",${qty}\n`;
+        }
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `inventory-${tech}-${quarter}-${year}.csv`;
+    a.click();
+
+    window.URL.revokeObjectURL(url);
+}
+
+// ===== INIT =====
+setCurrentQuarter();
+render();
+
+</script>
+
+</body>
+</html>
